@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "django_extensions",
 ]
 
+AUTH_USER_MODEL = "accounts.User"
 CREDENTIALS_ENCRYPTION_KEY = os.getenv("CREDENTIALS_ENCRYPTION_KEY")
 
 # Validate required settings at startup
