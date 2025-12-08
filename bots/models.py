@@ -2804,6 +2804,8 @@ class WebhookSecret(models.Model):
     def save(self, *args, **kwargs):
         # Only generate a secret if this is a new object (not yet saved to DB)
         if not self.pk and not self._secret:
+            if not settings.CREDENTIALS_ENCRYPTION_KEY:
+                raise ValueError("CREDENTIALS_ENCRYPTION_KEY environment variable is not set")
             secret = secrets.token_bytes(32)
             f = Fernet(settings.CREDENTIALS_ENCRYPTION_KEY)
             self._secret = f.encrypt(secret)
