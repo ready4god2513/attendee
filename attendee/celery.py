@@ -24,6 +24,18 @@ if sslCertRequirements is not None:
         broker_use_ssl={"ssl_cert_reqs": sslCertRequirements},
         redis_backend_use_ssl={"ssl_cert_reqs": sslCertRequirements},
     )
+    # If we are sure that we are using SSL enable support for Redis Cluster hash
+    # tags. This is mainly to prevent CROSSSLOT errors when using Redis Cluster.
+    #
+    # https://github.com/celery/celery/issues/8276#issuecomment-3714489309
+    if sslCertRequirements == ssl.CERT_REQUIRED:
+        app.conf.update(
+            broker_transport_options={
+                "global_keyprefix": "{celeryattendee}:",
+                "fanout_prefix": True,
+                "fanout_patterns": True,
+            },
+        )
 else:
     app = Celery("attendee")
 
