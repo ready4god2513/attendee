@@ -1,4 +1,27 @@
+import os
 from dataclasses import dataclass
+
+
+def _get_env_int(env_var: str, default: int) -> int:
+    """Get an integer from environment variable with a default value."""
+    value = os.getenv(env_var)
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except ValueError:
+        return default
+
+
+def _get_env_int_optional(env_var: str) -> int | None:
+    """Get an optional integer from environment variable."""
+    value = os.getenv(env_var)
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except ValueError:
+        return None
 
 
 @dataclass(frozen=True)
