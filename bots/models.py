@@ -2456,7 +2456,7 @@ class BotChatMessageRequest(models.Model):
     bot = models.ForeignKey(Bot, on_delete=models.CASCADE, related_name="chat_message_requests")
 
     to_user_uuid = models.CharField(max_length=255, null=True, blank=True)
-    to = models.CharField(choices=BotChatMessageToOptions.choices, null=False)
+    to = models.CharField(max_length=50, choices=BotChatMessageToOptions.choices, null=False)
 
     message = models.TextField(null=False)
     additional_data = models.JSONField(null=False, default=dict)
@@ -2565,6 +2565,8 @@ class WebhookSecret(models.Model):
     def save(self, *args, **kwargs):
         # Only generate a secret if this is a new object (not yet saved to DB)
         if not self.pk and not self._secret:
+            if not settings.CREDENTIALS_ENCRYPTION_KEY:
+                raise ValueError("CREDENTIALS_ENCRYPTION_KEY environment variable is not set")
             secret = secrets.token_bytes(32)
             f = Fernet(settings.CREDENTIALS_ENCRYPTION_KEY)
             self._secret = f.encrypt(secret)
