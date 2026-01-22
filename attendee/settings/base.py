@@ -183,6 +183,15 @@ CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 
+# Task routing - separate queues for different task types
+CELERY_TASK_ROUTES = {
+    # Long-running bot tasks - dedicated queue for KEDA scaling
+    "bots.tasks.run_bot_task.run_bot": {"queue": "bots"},
+    # Time-sensitive webhook delivery - must not be blocked by bots
+    "bots.tasks.deliver_webhook_task.deliver_webhook": {"queue": "webhooks"},
+    # Everything else uses default queue
+}
+
 REST_FRAMEWORK = {
     # YOUR SETTINGS
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
