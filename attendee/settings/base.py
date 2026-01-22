@@ -46,9 +46,16 @@ INSTALLED_APPS = [
     "django_extensions",
 ]
 
+AUTH_USER_MODEL = "accounts.User"
 CREDENTIALS_ENCRYPTION_KEY = os.getenv("CREDENTIALS_ENCRYPTION_KEY")
 
-AUTH_USER_MODEL = "accounts.User"
+# Validate required settings at startup
+if not CREDENTIALS_ENCRYPTION_KEY:
+    raise ValueError(
+        "CREDENTIALS_ENCRYPTION_KEY environment variable is not set. "
+        "Run 'python init_env.py > .env' during setup to generate it."
+    )
+
 
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
@@ -161,10 +168,14 @@ STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Redis/Celery Configuration
-if os.getenv("DISABLE_REDIS_SSL"):
-    REDIS_CELERY_URL = os.getenv("REDIS_URL") + "?ssl_cert_reqs=none"
-else:
-    REDIS_CELERY_URL = os.getenv("REDIS_URL")
+redis_params = {}
+if os.getenv("DISABLE_REDIS_SSL"): # backward compatibility
+    redis_params["ssl_cert_reqs"] = "none"
+elif os.getenv("REDIS_SSL_REQUIREMENTS") is not None and os.getenv("REDIS_SSL_REQUIREMENTS") != "":
+    redis_params["ssl_cert_reqs"] = os.getenv("REDIS_SSL_REQUIREMENTS")
+redis_params_query_string = "&".join([f"{key}={value}" for key, value in redis_params.items()])
+
+REDIS_CELERY_URL = os.getenv("REDIS_URL") + ("?" + redis_params_query_string if redis_params_query_string else "")
 
 CELERY_BROKER_URL = REDIS_CELERY_URL
 CELERY_RESULT_BACKEND = REDIS_CELERY_URL
