@@ -199,6 +199,8 @@ class BotPodCreator:
                 ),
                 env=[
                     client.V1EnvVar(name="ENABLE_CHROME_SANDBOX_FOR_WEBPAGE_STREAMER", value=os.getenv("ENABLE_CHROME_SANDBOX_FOR_WEBPAGE_STREAMER", "true")),
+                    client.V1EnvVar(name="OPTIMIZE_CHROME_FOR_TRANSCRIPTION", value=os.getenv("OPTIMIZE_CHROME_FOR_TRANSCRIPTION", "false")),
+                    client.V1EnvVar(name="WEBPAGE_STREAMER_VIDEO_FRAMERATE", value=os.getenv("WEBPAGE_STREAMER_VIDEO_FRAMERATE", "15")),
                 ],
                 security_context = self.get_webpage_streamer_container_security_context(),
                 volume_mounts=self.get_webpage_streamer_volume_mounts()

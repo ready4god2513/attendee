@@ -247,6 +247,16 @@ class WebpageStreamer:
         options.add_argument("--enable-blink-features=WebCodecs,WebRTC-InsertableStreams,-AutomationControlled")
         options.add_argument("--remote-debugging-port=9222")
 
+        # Optional Chrome optimizations for transcription-only use cases
+        if os.getenv("OPTIMIZE_CHROME_FOR_TRANSCRIPTION", "false").lower() == "true":
+            # https://peter.sh/experiments/chromium-command-line-switches/
+            options.add_argument("--disable-smooth-scrolling")
+            options.add_argument("--disable-backgrounding-occluded-windows")
+            options.add_argument("--disable-renderer-backgrounding")
+            options.add_argument("--disable-background-timer-throttling")
+            options.add_argument("--disable-features=TranslateUI")
+            logger.info("Chrome optimizations for transcription enabled")
+
         if os.getenv("ENABLE_CHROME_SANDBOX_FOR_WEBPAGE_STREAMER", "true").lower() != "true":
             options.add_argument("--no-sandbox")
             options.add_argument("--disable-setuid-sandbox")
