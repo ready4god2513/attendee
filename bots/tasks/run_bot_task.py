@@ -10,11 +10,23 @@ from bots.bot_controller import BotController
 logger = logging.getLogger(__name__)
 
 
-@shared_task(bind=True, soft_time_limit=14400)  # 4 hours - must exceed BOT_MAX_UPTIME_SECONDS
+class StagedBotInterrupted(Exception):
+    """Exception raised when a bot in STAGED state is interrupted and needs to be retried"""
+    pass
+
+
+@shared_task(bind=True, soft_time_limit=14400, autoretry_for=(StagedBotInterrupted), retry_kwargs={'max_retries': 5})  # 4 hours - must exceed BOT_MAX_UPTIME_SECONDS
 def run_bot(self, bot_id):
     logger.info(f"Running bot {bot_id}")
     bot_controller = BotController(bot_id)
+
     bot_controller.run()
+
+    # After run() completes, check if the bot was interrupted while in STAGED state
+    # If so, raise an exception to trigger retry
+    if bot_controller.interrupted_while_staged:
+        logger.info(f"Bot {bot_id} was interrupted while in STAGED state. Task will be retried.")
+        raise StagedBotInterrupted(f"Bot {bot_id} was interrupted while waiting to join")
 
 
 def kill_child_processes():
