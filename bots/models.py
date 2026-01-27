@@ -1225,6 +1225,7 @@ class BotEventSubTypes(models.IntegerChoices):
     LEAVE_REQUESTED_AUTO_LEAVE_COULD_NOT_ENABLE_CLOSED_CAPTIONS = 26, "Leave requested - Auto leave could not enable closed captions"
     COULD_NOT_JOIN_MEETING_AUTHORIZED_USER_NOT_IN_MEETING_TIMEOUT_EXCEEDED = 27, "Bot could not join meeting - Authorized user not in meeting timeout exceeded. See https://developers.zoom.us/blog/transition-to-obf-token-meetingsdk-apps/"
     COULD_NOT_JOIN_MEETING_BLOCKED_BY_CAPTCHA = 28, "Bot could not join meeting - Blocked by captcha (Verification challenge)."
+    FATAL_ERROR_SOFT_TIME_LIMIT_EXCEEDED = 26, "Fatal error - Soft time limit exceeded"
 
     @classmethod
     def sub_type_to_api_code(cls, value):
@@ -1258,6 +1259,7 @@ class BotEventSubTypes(models.IntegerChoices):
             cls.LEAVE_REQUESTED_AUTO_LEAVE_COULD_NOT_ENABLE_CLOSED_CAPTIONS: "auto_leave_could_not_enable_closed_captions",
             cls.COULD_NOT_JOIN_MEETING_AUTHORIZED_USER_NOT_IN_MEETING_TIMEOUT_EXCEEDED: "authorized_user_not_in_meeting_timeout_exceeded",
             cls.COULD_NOT_JOIN_MEETING_BLOCKED_BY_CAPTCHA: "blocked_by_captcha",
+            cls.FATAL_ERROR_SOFT_TIME_LIMIT_EXCEEDED: "soft_time_limit_exceeded",
         }
         return mapping.get(value)
 
@@ -1298,7 +1300,7 @@ class BotEvent(models.Model):
             models.CheckConstraint(
                 check=(
                     # For FATAL_ERROR event type, must have one of the valid event subtypes
-                    (Q(event_type=BotEventTypes.FATAL_ERROR) & (Q(event_sub_type=BotEventSubTypes.FATAL_ERROR_PROCESS_TERMINATED) | Q(event_sub_type=BotEventSubTypes.FATAL_ERROR_ATTENDEE_INTERNAL_ERROR) | Q(event_sub_type=BotEventSubTypes.FATAL_ERROR_OUT_OF_CREDITS) | Q(event_sub_type=BotEventSubTypes.FATAL_ERROR_RTMP_CONNECTION_FAILED) | Q(event_sub_type=BotEventSubTypes.FATAL_ERROR_UI_ELEMENT_NOT_FOUND) | Q(event_sub_type=BotEventSubTypes.FATAL_ERROR_HEARTBEAT_TIMEOUT) | Q(event_sub_type=BotEventSubTypes.FATAL_ERROR_BOT_NOT_LAUNCHED)))
+                    (Q(event_type=BotEventTypes.FATAL_ERROR) & (Q(event_sub_type=BotEventSubTypes.FATAL_ERROR_PROCESS_TERMINATED) | Q(event_sub_type=BotEventSubTypes.FATAL_ERROR_ATTENDEE_INTERNAL_ERROR) | Q(event_sub_type=BotEventSubTypes.FATAL_ERROR_OUT_OF_CREDITS) | Q(event_sub_type=BotEventSubTypes.FATAL_ERROR_RTMP_CONNECTION_FAILED) | Q(event_sub_type=BotEventSubTypes.FATAL_ERROR_UI_ELEMENT_NOT_FOUND) | Q(event_sub_type=BotEventSubTypes.FATAL_ERROR_HEARTBEAT_TIMEOUT) | Q(event_sub_type=BotEventSubTypes.FATAL_ERROR_BOT_NOT_LAUNCHED) | Q(event_sub_type=BotEventSubTypes.FATAL_ERROR_SOFT_TIME_LIMIT_EXCEEDED)))
                     |
                     # For COULD_NOT_JOIN event type, must have one of the valid event subtypes
                     (
