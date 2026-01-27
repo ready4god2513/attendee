@@ -624,7 +624,6 @@ class BotController:
         self.bot_in_db = Bot.objects.get(id=bot_id)
         self.cleanup_called = False
         self.run_called = False
-        self.interrupted_while_staged = False  # Flag to track if interrupted during STAGED state
 
         self.redis_client = None
         self.pubsub = None
@@ -1067,21 +1066,11 @@ class BotController:
         logger.info("handle_glib_shutdown called")
 
         try:
-            # Refresh bot state from DB to get the latest state
-            self.bot_in_db.refresh_from_db()
-
-            # If the bot is in STAGED state (waiting to join), don't mark as fatal error
-            # This allows the Celery task to be requeued when the worker restarts
-            if self.bot_in_db.state == BotStates.STAGED:
-                logger.info("Bot is in STAGED state during shutdown. Setting flag for graceful retry.")
-                self.interrupted_while_staged = True
-            else:
-                # For all other states, this is an unexpected termination
-                BotEventManager.create_event(
-                    bot=self.bot_in_db,
-                    event_type=BotEventTypes.FATAL_ERROR,
-                    event_sub_type=BotEventSubTypes.FATAL_ERROR_PROCESS_TERMINATED,
-                )
+            BotEventManager.create_event(
+                bot=self.bot_in_db,
+                event_type=BotEventTypes.FATAL_ERROR,
+                event_sub_type=BotEventSubTypes.FATAL_ERROR_PROCESS_TERMINATED,
+            )
         except Exception as e:
             logger.warning(f"Error creating FATAL_ERROR event: {e}")
 
