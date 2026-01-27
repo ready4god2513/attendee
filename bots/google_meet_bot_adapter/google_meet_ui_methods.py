@@ -242,6 +242,15 @@ class GoogleMeetUIMethods:
                 self.click_others_may_see_your_meeting_differently_button("click_captions_button")
                 self.check_if_waiting_room_timeout_exceeded(waiting_room_timeout_started_at, "click_captions_button")
 
+                # Log progress every 30 iterations (~30 seconds) to show we're still waiting
+                if (attempt_to_look_for_captions_button_index + 1) % 30 == 0:
+                    elapsed_seconds = int(time.time() - waiting_room_timeout_started_at)
+                    logger.info(
+                        f"Still waiting for captions button... "
+                        f"Attempt {attempt_to_look_for_captions_button_index + 1}/{num_attempts_to_look_for_captions_button}, "
+                        f"elapsed {elapsed_seconds}s. Checking for denial/blocked patterns."
+                    )
+
                 last_check_timed_out = attempt_to_look_for_captions_button_index == num_attempts_to_look_for_captions_button - 1
                 if last_check_timed_out:
                     self.look_for_asking_to_be_let_in_element_after_waiting_period_expired("click_captions_button")
