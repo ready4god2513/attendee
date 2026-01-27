@@ -1464,12 +1464,19 @@ class BotController:
             return
 
         if message.get("message") == BotAdapter.Messages.REQUEST_TO_JOIN_DENIED:
-            logger.info("Received message that request to join was denied")
-            BotEventManager.create_event(
+            denial_reason = message.get("denial_reason")
+            logger.info(f"Received message that request to join was denied (reason: {denial_reason})")
+            new_bot_event = BotEventManager.create_event(
                 bot=self.bot_in_db,
                 event_type=BotEventTypes.COULD_NOT_JOIN,
                 event_sub_type=BotEventSubTypes.COULD_NOT_JOIN_MEETING_REQUEST_TO_JOIN_DENIED,
+                event_metadata={
+                    "denial_reason": denial_reason,
+                },
             )
+
+            self.save_debug_artifacts(message, new_bot_event)
+
             self.cleanup()
             return
 

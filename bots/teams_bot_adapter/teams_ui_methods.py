@@ -51,8 +51,8 @@ class TeamsUIMethods:
         waiting_element = self.find_element_by_selector(By.XPATH, '//*[contains(text(), "Someone will let you in soon")]')
         if waiting_element:
             # Check if we've been waiting too long
-            logger.info("Still waiting to be admitted to the meeting after waiting period expired. Raising UiRequestToJoinDeniedException")
-            raise UiRequestToJoinDeniedException("Bot was not let in after waiting period expired", step)
+            logger.info(f"Still waiting to be admitted to the meeting after waiting period expired (reason: {UiRequestToJoinDeniedException.WAITING_PERIOD_EXPIRED}). Raising UiRequestToJoinDeniedException")
+            raise UiRequestToJoinDeniedException("Bot was not let in after waiting period expired", step, denial_reason=UiRequestToJoinDeniedException.WAITING_PERIOD_EXPIRED)
 
     def turn_off_media_inputs(self):
         logger.info("Waiting for the microphone button...")
@@ -185,18 +185,21 @@ class TeamsUIMethods:
             raise UiTeamsBlockingUsException("Teams is blocking us for whatever reason, but we can retry", step)
 
     def look_for_denied_your_request_element(self, step):
-        denied_your_request_element = self.find_element_by_selector(
-            By.XPATH,
-            '//*[contains(text(), "but you were denied access to the meeting") or contains(text(), "Your request to join was declined")]',
-        )
+        # Check each denial pattern individually for better diagnostics
+        denial_patterns = [
+            ("but you were denied access to the meeting", UiRequestToJoinDeniedException.DENIED_BY_PARTICIPANT),
+            ("Your request to join was declined", UiRequestToJoinDeniedException.DENIED_BY_PARTICIPANT),
+        ]
 
-        if denied_your_request_element:
-            logger.info("Someone in the call denied our request to join. Raising UiRequestToJoinDeniedException")
-            dismiss_button = self.locate_element(step="closed_captions_button", condition=EC.presence_of_element_located((By.CSS_SELECTOR, '[data-tid="calling-retry-cancelbutton"]')), wait_time_seconds=2)
-            if dismiss_button:
-                logger.info("Clicking the dismiss button...")
-                self.click_element(dismiss_button, "dismiss_button")
-            raise UiRequestToJoinDeniedException("Someone in the call denied your request to join", step)
+        for text_pattern, denial_reason in denial_patterns:
+            element = self.find_element_by_selector(By.XPATH, f'//*[contains(text(), "{text_pattern}")]')
+            if element:
+                logger.info(f"Detected denial pattern: '{text_pattern}' (reason: {denial_reason}). Raising UiRequestToJoinDeniedException")
+                dismiss_button = self.locate_element(step="closed_captions_button", condition=EC.presence_of_element_located((By.CSS_SELECTOR, '[data-tid="calling-retry-cancelbutton"]')), wait_time_seconds=2)
+                if dismiss_button:
+                    logger.info("Clicking the dismiss button...")
+                    self.click_element(dismiss_button, "dismiss_button")
+                raise UiRequestToJoinDeniedException(text_pattern, step, denial_reason=denial_reason)
 
     def set_layout(self, layout_to_select):
         logger.info("Waiting for the view button...")

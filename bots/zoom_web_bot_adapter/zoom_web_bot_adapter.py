@@ -7,6 +7,7 @@ import jwt
 
 from bots.meeting_url_utils import parse_zoom_join_url
 from bots.web_bot_adapter import WebBotAdapter
+from bots.web_bot_adapter.ui_methods import UiRequestToJoinDeniedException
 from bots.zoom_web_bot_adapter.zoom_web_ui_methods import ZoomWebUIMethods
 
 logger = logging.getLogger(__name__)
@@ -126,7 +127,7 @@ class ZoomWebBotAdapter(WebBotAdapter, ZoomWebUIMethods):
     def subclass_specific_handle_failed_to_join(self, reason):
         # Special case for removed from waiting room
         if reason.get("method") == "removed_from_waiting_room":
-            self.send_request_to_join_denied_message()
+            self.send_request_to_join_denied_message(denial_reason=UiRequestToJoinDeniedException.DENIED_BY_PARTICIPANT)
             return
 
         if reason.get("method") != "join":
