@@ -436,8 +436,18 @@ class WebBotAdapter(BotAdapter):
                     continue
                 raise  # Re-raise other OSErrors
 
-    def send_request_to_join_denied_message(self):
-        self.send_message_callback({"message": self.Messages.REQUEST_TO_JOIN_DENIED})
+    def send_request_to_join_denied_message(self, denial_reason=None):
+        screenshot_path, mhtml_file_path, current_time = self.capture_screenshot_and_mhtml_file()
+
+        self.send_message_callback(
+            {
+                "message": self.Messages.REQUEST_TO_JOIN_DENIED,
+                "denial_reason": denial_reason,
+                "screenshot_path": screenshot_path,
+                "mhtml_file_path": mhtml_file_path,
+                "current_time": current_time,
+            }
+        )
 
     def send_meeting_not_found_message(self):
         self.send_message_callback({"message": self.Messages.MEETING_NOT_FOUND})
@@ -660,8 +670,8 @@ class WebBotAdapter(BotAdapter):
                 self.send_login_attempt_failed_message()
                 return
 
-            except UiRequestToJoinDeniedException:
-                self.send_request_to_join_denied_message()
+            except UiRequestToJoinDeniedException as e:
+                self.send_request_to_join_denied_message(denial_reason=e.denial_reason)
                 return
 
             except UiCouldNotJoinMeetingWaitingRoomTimeoutException:

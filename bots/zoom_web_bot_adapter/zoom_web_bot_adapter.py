@@ -134,7 +134,7 @@ class ZoomWebBotAdapter(WebBotAdapter, ZoomWebUIMethods):
     def subclass_specific_handle_failed_to_join(self, reason):
         # Special case for removed from waiting room
         if reason.get("method") == "removed_from_waiting_room":
-            self.send_request_to_join_denied_message()
+            self.send_request_to_join_denied_message(denial_reason=UiRequestToJoinDeniedException.DENIED_BY_PARTICIPANT)
             return
 
         if reason.get("method") != "join":
