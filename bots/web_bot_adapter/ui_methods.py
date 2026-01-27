@@ -7,7 +7,14 @@ class UiException(Exception):
 
 # When this exception is raised, the bot will stop running and log that it was denied access to the meeting
 class UiRequestToJoinDeniedException(UiException):
-    def __init__(self, message, step=None, inner_exception=None):
+    # Denial reason constants
+    DENIED_BY_PARTICIPANT = "denied_by_participant"
+    NO_RESPONSE = "no_response"
+    DISCONNECTED = "disconnected"
+    WAITING_PERIOD_EXPIRED = "waiting_period_expired"
+
+    def __init__(self, message, step=None, inner_exception=None, denial_reason=None):
+        self.denial_reason = denial_reason
         super().__init__(message, step, inner_exception)
 
 

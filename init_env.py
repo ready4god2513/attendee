@@ -11,6 +11,14 @@ def generate_django_secret_key():
 
 
 def main():
+    """
+    Generate required environment variables for the application.
+    
+    IMPORTANT: Run this script and redirect output to .env file during setup:
+      python init_env.py > .env
+    
+    This script MUST be run once during initial setup to generate encryption keys.
+    """
     credentials_key = generate_encryption_key()
     django_key = generate_django_secret_key()
 

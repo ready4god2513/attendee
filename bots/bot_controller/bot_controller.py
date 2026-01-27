@@ -666,7 +666,14 @@ class BotController:
         if self.redis_client:
             self.redis_client.close()
 
-        redis_url = os.getenv("REDIS_URL") + ("?ssl_cert_reqs=none" if os.getenv("DISABLE_REDIS_SSL") else "")
+        redis_params = {}
+        if os.getenv("DISABLE_REDIS_SSL"): # backward compatibility
+            redis_params["ssl_cert_reqs"] = "none"
+        elif os.getenv("REDIS_SSL_REQUIREMENTS") is not None and os.getenv("REDIS_SSL_REQUIREMENTS") != "":
+            redis_params["ssl_cert_reqs"] = os.getenv("REDIS_SSL_REQUIREMENTS")
+        redis_params_query_string = "&".join([f"{key}={value}" for key, value in redis_params.items()])
+
+        redis_url = os.getenv("REDIS_URL") + ("?" + redis_params_query_string if redis_params_query_string else "")
         self.redis_client = redis.from_url(redis_url)
         self.pubsub = self.redis_client.pubsub()
         self.pubsub.subscribe(self.pubsub_channel)
@@ -1457,12 +1464,19 @@ class BotController:
             return
 
         if message.get("message") == BotAdapter.Messages.REQUEST_TO_JOIN_DENIED:
-            logger.info("Received message that request to join was denied")
-            BotEventManager.create_event(
+            denial_reason = message.get("denial_reason")
+            logger.info(f"Received message that request to join was denied (reason: {denial_reason})")
+            new_bot_event = BotEventManager.create_event(
                 bot=self.bot_in_db,
                 event_type=BotEventTypes.COULD_NOT_JOIN,
                 event_sub_type=BotEventSubTypes.COULD_NOT_JOIN_MEETING_REQUEST_TO_JOIN_DENIED,
+                event_metadata={
+                    "denial_reason": denial_reason,
+                },
             )
+
+            self.save_debug_artifacts(message, new_bot_event)
+
             self.cleanup()
             return
 
