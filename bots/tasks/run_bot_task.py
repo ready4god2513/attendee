@@ -47,8 +47,18 @@ def kill_child_processes():
         pass  # Process group may no longer exist
 
 
+# Flag to prevent recursive shutdown handler calls
+_shutdown_handler_called = False
+
+
 @worker_shutting_down.connect
 def shutting_down_handler(sig, how, exitcode, **kwargs):
+    # Prevent recursive calls that can happen when killpg triggers another shutdown signal
+    global _shutdown_handler_called
+    if _shutdown_handler_called:
+        return
+    _shutdown_handler_called = True
+
     # Just adding this code so we can see how to shut down all the tasks
     # when the main process is terminated.
     # It's likely overkill.
