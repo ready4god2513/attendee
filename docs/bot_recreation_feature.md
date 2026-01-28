@@ -58,6 +58,7 @@ Location: `/bots/tasks/__init__.py`
    - Creates new bot with same settings
    - Copies participants
    - Copies all transcriptions/utterances
+   - Copies bot-level webhook subscriptions
    - Links bots via metadata
    - Launches new bot
    ↓
@@ -93,6 +94,13 @@ Location: `/bots/tasks/__init__.py`
 - source
 - participant (mapped to new participant)
 
+**Webhook Subscriptions** (bot-level only):
+- url
+- triggers
+- is_active
+- project-level webhook subscriptions (remain at project level)
+- webhook delivery attempts history
+
 **Not Copied**:
 - audio_blob (typically cleared after transcription)
 - audio_chunk (only transcription text is preserved)
@@ -115,12 +123,14 @@ Location: `/bots/tests/test_recreate_bot_with_transcriptions_task.py`
 
 **Test Cases**:
 1. `test_recreate_bot_with_transcriptions` - Full recreation with multiple participants and transcriptions
-2. `test_recreate_bot_without_transcriptions` - Handles bots without any transcriptions
-3. `test_recreate_bot_filters_empty_transcriptions` - Verifies empty/null transcriptions are filtered
+4. `test_recreate_bot_copies_webhooks` - Verifies bot-level webhooks are copied correctly
 
 **Coverage**:
 - Bot creation with settings preservation
 - Metadata tracking (bidirectional linking)
+- Participant copying
+- Utterance copying with filtering
+- Webhook subscription copying (bot-level) linking)
 - Participant copying
 - Utterance copying with filtering
 - Recording creation
@@ -158,13 +168,16 @@ The task includes comprehensive error handling:
 
 ## Benefits
 
-1. **Transcript Continuity**: Meeting participants experience no loss of transcript history
+1. **Webhook Continuity**: Bot-level webhooks continue to receive events from the new bot
+6. **Transcript Continuity**: Meeting participants experience no loss of transcript history
 2. **Seamless Recovery**: Automatic bot recreation without manual intervention
 3. **Meeting Continuity**: New bot rejoins with full context
 4. **Participant Preservation**: All meeting participants are maintained in the new bot
 5. **Audit Trail**: Metadata links allow tracking of bot lifecycles
 
 ## Limitations
+5. Project-level webhook subscriptions are not affected (they remain at project level)
+6. Webhook delivery history is not copied
 
 1. Audio recordings are not preserved (only transcriptions)
 2. Chat messages are not copied (would require additional logic)
@@ -174,6 +187,7 @@ The task includes comprehensive error handling:
 ## Future Enhancements
 
 Potential improvements:
+6. Copy participant events history
 1. Copy chat messages from original bot
 2. Preserve webhook delivery state
 3. Add configuration option to disable recreation

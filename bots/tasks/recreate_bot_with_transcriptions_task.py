@@ -4,7 +4,7 @@ from celery import shared_task
 from django.db import transaction
 
 from bots.launch_bot_utils import launch_bot
-from bots.models import Bot, BotEventManager, BotEventTypes, Recording, Participant, Utterance, AudioChunk, BotStates, TranscriptionTypes
+from bots.models import Bot, BotEventManager, BotEventTypes, Recording, Participant, Utterance, AudioChunk, BotStates, TranscriptionTypes, WebhookSubscription
 
 logger = logging.getLogger(__name__)
 
@@ -110,6 +110,21 @@ def recreate_bot_with_transcriptions(self, original_bot_id):
                     utterances_copied += 1
 
                 logger.info(f"Copied {utterances_copied} utterances with transcriptions to new bot {new_bot.object_id}")
+
+            # Copy bot-level webhook subscriptions from original bot to new bot
+            webhooks_copied = 0
+            for old_webhook in original_bot.bot_webhook_subscriptions.all():
+                WebhookSubscription.objects.create(
+                    project=new_bot.project,
+                    bot=new_bot,
+                    url=old_webhook.url,
+                    triggers=old_webhook.triggers,
+                    is_active=old_webhook.is_active,
+                )
+                webhooks_copied += 1
+                logger.info(f"Copied webhook subscription {old_webhook.url}")
+
+            logger.info(f"Copied {webhooks_copied} webhook subscriptions to new bot {new_bot.object_id}")
 
             # Create JOIN_REQUESTED event for the new bot
             BotEventManager.create_event(

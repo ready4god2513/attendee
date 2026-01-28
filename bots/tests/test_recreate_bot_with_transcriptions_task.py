@@ -15,6 +15,8 @@ from bots.models import (
     TranscriptionProviders,
     Utterance,
     AudioChunk,
+    WebhookSubscription,
+    WebhookTriggerTypes,
 )
 from bots.tasks.recreate_bot_with_transcriptions_task import recreate_bot_with_transcriptions
 
@@ -235,3 +237,58 @@ class RecreateBotsWithTranscriptionsTaskTest(TransactionTestCase):
         self.assertEqual(new_utterances.count(), 2)
         self.assertEqual(new_utterances[0].transcription["transcript"], "Valid text")
         self.assertEqual(new_utterances[1].transcription["transcript"], "Another valid text")
+
+    def test_recreate_bot_copies_webhooks(self):
+        """Test that bot-level webhook subscriptions are copied to the new bot"""
+        original_bot = Bot.objects.create(
+            project=self.project,
+            meeting_url="https://zoom.us/j/555555555",
+            name="Bot with Webhooks",
+        )
+
+        Recording.objects.create(
+            bot=original_bot,
+            recording_type=RecordingTypes.AUDIO_AND_VIDEO,
+            transcription_type=TranscriptionTypes.NON_REALTIME,
+            transcription_provider=TranscriptionProviders.DEEPGRAM,
+            is_default_recording=True,
+        )
+
+        # Create bot-level webhook subscriptions
+        webhook1 = WebhookSubscription.objects.create(
+            project=self.project,
+            bot=original_bot,
+            url="https://example.com/webhook1",
+            triggers=[WebhookTriggerTypes.BOT_STATE_CHANGE, WebhookTriggerTypes.TRANSCRIPT_UPDATE],
+        )
+        webhook2 = WebhookSubscription.objects.create(
+            project=self.project,
+            bot=original_bot,
+            url="https://example.com/webhook2",
+            triggers=[WebhookTriggerTypes.CHAT_MESSAGES_UPDATE],
+            is_active=False,
+        )
+
+        with mock.patch("bots.tasks.recreate_bot_with_transcriptions_task.launch_bot"):
+            result = recreate_bot_with_transcriptions(original_bot.id)
+
+        new_bot = Bot.objects.get(object_id=result["new_bot_id"])
+
+        # Verify webhooks were copied
+        new_webhooks = new_bot.bot_webhook_subscriptions.all()
+        self.assertEqual(new_webhooks.count(), 2)
+
+        # Check first webhook
+        new_webhook1 = new_webhooks.filter(url="https://example.com/webhook1").first()
+        self.assertIsNotNone(new_webhook1)
+        self.assertEqual(new_webhook1.triggers, [WebhookTriggerTypes.BOT_STATE_CHANGE, WebhookTriggerTypes.TRANSCRIPT_UPDATE])
+        self.assertTrue(new_webhook1.is_active)
+        self.assertEqual(new_webhook1.project, self.project)
+        self.assertEqual(new_webhook1.bot, new_bot)
+
+        # Check second webhook
+        new_webhook2 = new_webhooks.filter(url="https://example.com/webhook2").first()
+        self.assertIsNotNone(new_webhook2)
+        self.assertEqual(new_webhook2.triggers, [WebhookTriggerTypes.CHAT_MESSAGES_UPDATE])
+        self.assertFalse(new_webhook2.is_active)
+
