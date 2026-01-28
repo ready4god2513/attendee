@@ -1066,13 +1066,26 @@ class BotController:
         logger.info("handle_glib_shutdown called")
 
         try:
+            # Create event indicating the bot was terminated by a signal
             BotEventManager.create_event(
                 bot=self.bot_in_db,
                 event_type=BotEventTypes.FATAL_ERROR,
                 event_sub_type=BotEventSubTypes.FATAL_ERROR_PROCESS_TERMINATED,
+                event_metadata={"will_recreate_bot": True},
             )
         except Exception as e:
             logger.warning(f"Error creating FATAL_ERROR event: {e}")
+
+        try:
+            # Schedule recreation of the bot with transcriptions copied over
+            # Use a countdown to allow time for cleanup and prevent race conditions
+            from bots.tasks.recreate_bot_with_transcriptions_task import recreate_bot_with_transcriptions
+
+            logger.info(f"Scheduling recreation of bot {self.bot_in_db.id} with transcriptions")
+            recreate_bot_with_transcriptions.apply_async(args=[self.bot_in_db.id], countdown=30)
+        except Exception as e:
+            logger.error(f"Error scheduling bot recreation: {e}")
+            logger.exception(e)
 
         self.cleanup()
         return False

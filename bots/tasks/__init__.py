@@ -4,6 +4,7 @@ from .launch_scheduled_bot_task import launch_scheduled_bot
 from .process_async_transcription_task import process_async_transcription
 from .process_utterance_task import process_utterance
 from .refresh_zoom_oauth_connection_task import refresh_zoom_oauth_connection
+from .recreate_bot_with_transcriptions_task import recreate_bot_with_transcriptions
 from .restart_bot_pod_task import restart_bot_pod
 from .run_bot_task import run_bot
 from .send_slack_alert_task import send_slack_alert
@@ -16,6 +17,7 @@ __all__ = [
     "process_utterance",
     "run_bot",
     "deliver_webhook",
+    "recreate_bot_with_transcriptions",
     "restart_bot_pod",
     "launch_scheduled_bot",
     "sync_calendar",
