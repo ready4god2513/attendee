@@ -5,6 +5,8 @@ import hashlib
 import json
 import logging
 import os
+import shutil
+import tempfile
 import threading
 import time
 from time import sleep
@@ -77,6 +79,7 @@ class WebBotAdapter(BotAdapter):
         self.video_frame_size = video_frame_size
 
         self.driver = None
+        self.user_data_dir = None
 
         self.send_frames = True
 
@@ -565,6 +568,12 @@ class WebBotAdapter(BotAdapter):
         }
         options.add_experimental_option("prefs", prefs)
 
+        # Create a unique user data directory for this Chrome instance
+        # This prevents conflicts when multiple bots run simultaneously
+        self.user_data_dir = tempfile.mkdtemp(prefix="chrome_user_data_")
+        options.add_argument(f"--user-data-dir={self.user_data_dir}")
+        logger.info(f"Using Chrome user data directory: {self.user_data_dir}")
+
         self.add_subclass_specific_chrome_options(options)
 
         if self.driver:
@@ -868,6 +877,14 @@ class WebBotAdapter(BotAdapter):
                 self.websocket_server.shutdown()
             except Exception as e:
                 logger.warning(f"Error shutting down websocket server: {e}")
+
+        # Clean up the Chrome user data directory
+        if self.user_data_dir and os.path.exists(self.user_data_dir):
+            try:
+                shutil.rmtree(self.user_data_dir)
+                logger.info(f"Cleaned up Chrome user data directory: {self.user_data_dir}")
+            except Exception as e:
+                logger.info(f"Error cleaning up Chrome user data directory: {e}")
 
         self.cleaned_up = True
 
