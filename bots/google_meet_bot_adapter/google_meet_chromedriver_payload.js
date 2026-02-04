@@ -930,35 +930,57 @@ class WebSocketClient {
   constructor() {
       const url = `ws://localhost:${window.initialData.websocketPort}`;
       console.log('WebSocketClient url', url);
-      this.ws = new WebSocket(url);
-      this.ws.binaryType = 'arraybuffer';
-      
-      this.ws.onopen = () => {
-          console.log('WebSocket Connected');
-      };
-      
-      this.ws.onmessage = (event) => {
-          this.handleMessage(event.data);
-      };
-      
-      this.ws.onerror = (error) => {
-          console.error('WebSocket Error:', error);
-      };
-      
-      this.ws.onclose = () => {
-          console.log('WebSocket Disconnected');
-      };
+      this.websocketUrl = url;
+      this.reconnectAttempts = 0;
+      this.maxReconnectAttempts = 30;
+      this.reconnectDelay = 1000; // Start with 1 second
+      this.maxReconnectDelay = 30000; // Cap at 30 seconds
 
+      this.connect();
       this.mediaSendingEnabled = false;
-      
-      /*
-      We no longer need this because we're not using MediaStreamTrackProcessor's
-      this.lastVideoFrameTime = performance.now();
-      this.fillerFrameInterval = null;
+  }
 
-      this.lastVideoFrame = this.getBlackFrame();
-      this.blackVideoFrame = this.getBlackFrame();
-      */
+  connect() {
+      try {
+          this.ws = new WebSocket(this.websocketUrl);
+          this.ws.binaryType = 'arraybuffer';
+
+          this.ws.onopen = () => {
+              console.log('WebSocket Connected');
+              this.reconnectAttempts = 0; // Reset on successful connection
+              this.reconnectDelay = 1000;
+          };
+
+          this.ws.onmessage = (event) => {
+              this.handleMessage(event.data);
+          };
+
+          this.ws.onerror = (error) => {
+              console.error('WebSocket Error:', error);
+          };
+
+          this.ws.onclose = () => {
+              console.log('WebSocket Disconnected, attempting reconnect');
+              this.scheduleReconnect();
+          };
+      } catch (error) {
+          console.error('Error creating WebSocket:', error);
+          this.scheduleReconnect();
+      }
+  }
+
+  scheduleReconnect() {
+      if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+          console.error('Max reconnection attempts reached, giving up');
+          return;
+      }
+
+      this.reconnectAttempts++;
+      // Exponential backoff: delay doubles each time, capped at maxReconnectDelay
+      const delay = Math.min(this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1), this.maxReconnectDelay);
+      console.log(`Scheduling WebSocket reconnect in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+
+      setTimeout(() => this.connect(), delay);
   }
 
   /*
