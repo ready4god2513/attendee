@@ -46,9 +46,16 @@ INSTALLED_APPS = [
     "django_extensions",
 ]
 
+AUTH_USER_MODEL = "accounts.User"
 CREDENTIALS_ENCRYPTION_KEY = os.getenv("CREDENTIALS_ENCRYPTION_KEY")
 
-AUTH_USER_MODEL = "accounts.User"
+# Validate required settings at startup
+if not CREDENTIALS_ENCRYPTION_KEY:
+    raise ValueError(
+        "CREDENTIALS_ENCRYPTION_KEY environment variable is not set. "
+        "Run 'python init_env.py > .env' during setup to generate it."
+    )
+
 
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
@@ -161,16 +168,29 @@ STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Redis/Celery Configuration
-if os.getenv("DISABLE_REDIS_SSL"):
-    REDIS_CELERY_URL = os.getenv("REDIS_URL") + "?ssl_cert_reqs=none"
-else:
-    REDIS_CELERY_URL = os.getenv("REDIS_URL")
+redis_params = {}
+if os.getenv("DISABLE_REDIS_SSL"): # backward compatibility
+    redis_params["ssl_cert_reqs"] = "none"
+elif os.getenv("REDIS_SSL_REQUIREMENTS") is not None and os.getenv("REDIS_SSL_REQUIREMENTS") != "":
+    redis_params["ssl_cert_reqs"] = os.getenv("REDIS_SSL_REQUIREMENTS")
+redis_params_query_string = "&".join([f"{key}={value}" for key, value in redis_params.items()])
+
+REDIS_CELERY_URL = os.getenv("REDIS_URL") + ("?" + redis_params_query_string if redis_params_query_string else "")
 
 CELERY_BROKER_URL = REDIS_CELERY_URL
 CELERY_RESULT_BACKEND = REDIS_CELERY_URL
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
+
+# Task routing - separate queues for different task types
+CELERY_TASK_ROUTES = {
+    # Long-running bot tasks - dedicated queue for KEDA scaling
+    "bots.tasks.run_bot_task.run_bot": {"queue": "bots"},
+    # Time-sensitive webhook delivery - must not be blocked by bots
+    "bots.tasks.deliver_webhook_task.deliver_webhook": {"queue": "webhooks"},
+    # Everything else uses default queue
+}
 
 REST_FRAMEWORK = {
     # YOUR SETTINGS
@@ -250,9 +270,13 @@ if os.getenv("USE_IRSA_FOR_S3_STORAGE", "false") == "true":
 
 CHARGE_CREDITS_FOR_BOTS = os.getenv("CHARGE_CREDITS_FOR_BOTS", "false") == "true"
 
+# Celery task time limits
+BOT_TASK_SOFT_TIME_LIMIT_SECONDS = int(os.getenv("BOT_TASK_SOFT_TIME_LIMIT_SECONDS", 14400))  # 4 hours default
+
 BOT_POD_NAMESPACE = os.getenv("BOT_POD_NAMESPACE", "attendee")
 WEBPAGE_STREAMER_POD_NAMESPACE = os.getenv("WEBPAGE_STREAMER_POD_NAMESPACE", "attendee-webpage-streamer")
 REQUIRE_HTTPS_WEBHOOKS = os.getenv("REQUIRE_HTTPS_WEBHOOKS", "true") == "true"
+REQUIRE_STRING_VALUES_IN_METADATA = os.getenv("REQUIRE_STRING_VALUES_IN_METADATA", "true") == "true"
 MAX_METADATA_LENGTH = int(os.getenv("MAX_METADATA_LENGTH", 1000))
 SITE_DOMAIN = os.getenv("SITE_DOMAIN", "app.attendee.dev")
 MASK_TRANSCRIPT_IN_LOGS = os.getenv("MASK_TRANSCRIPT_IN_LOGS", "false") == "true"

@@ -1,10 +1,11 @@
 import logging
+import os
 
 import requests
 from celery import shared_task
 from django.utils import timezone
 
-from bots.models import WebhookDeliveryAttempt, WebhookDeliveryAttemptStatus, WebhookTriggerTypes
+from bots.models import SessionTypes, WebhookDeliveryAttempt, WebhookDeliveryAttemptStatus, WebhookTriggerTypes
 from bots.webhook_utils import sign_payload
 
 logger = logging.getLogger(__name__)
@@ -44,8 +45,12 @@ def deliver_webhook(self, delivery_id):
     related_object_specific_webhook_data = {}
 
     if delivery.bot:
-        related_object_specific_webhook_data["bot_id"] = delivery.bot.object_id
-        related_object_specific_webhook_data["bot_metadata"] = delivery.bot.metadata
+        if delivery.bot.session_type == SessionTypes.BOT:
+            related_object_specific_webhook_data["bot_id"] = delivery.bot.object_id
+            related_object_specific_webhook_data["bot_metadata"] = delivery.bot.metadata
+        elif delivery.bot.session_type == SessionTypes.APP_SESSION:
+            related_object_specific_webhook_data["app_session_id"] = delivery.bot.object_id
+            related_object_specific_webhook_data["app_session_metadata"] = delivery.bot.metadata
     elif delivery.calendar:
         related_object_specific_webhook_data["calendar_id"] = delivery.calendar.object_id
         related_object_specific_webhook_data["calendar_deduplication_key"] = delivery.calendar.deduplication_key
@@ -83,6 +88,7 @@ def deliver_webhook(self, delivery_id):
                 "X-Webhook-Signature": signature,
             },
             timeout=10,  # 10-second timeout
+            verify=os.getenv("VERIFY_WEBHOOK_SSL", "true").lower() != "false",
         )
 
         # Update the delivery attempt with the response

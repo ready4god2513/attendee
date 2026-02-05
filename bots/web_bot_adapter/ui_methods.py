@@ -7,7 +7,14 @@ class UiException(Exception):
 
 # When this exception is raised, the bot will stop running and log that it was denied access to the meeting
 class UiRequestToJoinDeniedException(UiException):
-    def __init__(self, message, step=None, inner_exception=None):
+    # Denial reason constants
+    DENIED_BY_PARTICIPANT = "denied_by_participant"
+    NO_RESPONSE = "no_response"
+    DISCONNECTED = "disconnected"
+    WAITING_PERIOD_EXPIRED = "waiting_period_expired"
+
+    def __init__(self, message, step=None, inner_exception=None, denial_reason=None):
+        self.denial_reason = denial_reason
         super().__init__(message, step, inner_exception)
 
 
@@ -34,12 +41,29 @@ class UiIncorrectPasswordException(UiException):
         super().__init__(message, step, inner_exception)
 
 
+class UiBlockedByCaptchaException(UiException):
+    def __init__(self, message, step=None, inner_exception=None):
+        super().__init__(message, step, inner_exception)
+
+
 class UiRetryableException(UiException):
     def __init__(self, message, step=None, inner_exception=None):
         super().__init__(message, step, inner_exception)
 
 
+class UiAuthorizedUserNotInMeetingTimeoutExceededException(UiException):
+    def __init__(self, message, step=None, inner_exception=None):
+        super().__init__(message, step, inner_exception)
+
+
 class UiRetryableExpectedException(UiRetryableException):
+    def __init__(self, message, step=None, inner_exception=None):
+        super().__init__(message, step, inner_exception)
+
+
+# When this exception is raised, the bot will always retry
+# It is up to the adapter to stop throwing this exception eventually
+class UiInfinitelyRetryableException(UiException):
     def __init__(self, message, step=None, inner_exception=None):
         super().__init__(message, step, inner_exception)
 
